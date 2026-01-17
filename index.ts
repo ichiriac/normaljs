@@ -11,3 +11,5 @@ export * from './src/Record';
 export * from './src/Request';
 export * from './src/Fields';
 export * from './src/fields/Base';
+export * from './src/ScopeBuilder';
+export * from './src/cache/CacheAdapter';

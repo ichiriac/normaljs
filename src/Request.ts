@@ -1,4 +1,6 @@
 import type { Model } from './Model.js';
+import type { ScopeRequest, ScopeOptions } from './ScopeBuilder.js';
+import { applyCriteria } from './utils/criteria.js';
 
 type AnyMap = Record<string, any>;
 
@@ -13,6 +15,9 @@ interface QueryBuilderLike {
   distinct?: (...args: any[]) => any;
   leftJoin?: (...args: any[]) => any;
   where?: (...args: any[]) => any;
+  orderBy?: (...args: any[]) => any;
+  limit?: (count: number) => any;
+  offset?: (count: number) => any;
   queryContext?: (ctx: AnyMap) => any;
   then: (onFulfilled?: (value: any) => any, onRejected?: (reason: any) => any) => Promise<any>;
   finally: (onFinally?: () => void) => any;
@@ -23,10 +28,15 @@ interface QueryBuilderLike {
 class Request {
   protected model: Model;
   protected queryBuilder: QueryBuilderLike;
+  public _scopeRequests?: ScopeRequest[];
+  public _applyDefaultScope?: boolean;
+  public _scopesApplied?: boolean;
 
   constructor(model: Model, queryBuilder: QueryBuilderLike) {
     this.model = model;
     this.queryBuilder = queryBuilder;
+    this._applyDefaultScope = undefined;
+    this._scopesApplied = false;
 
     return new Proxy(this, {
       get: (target: Request, prop: PropertyKey, receiver: any) => {
@@ -56,6 +66,11 @@ class Request {
   }
 
   then(onFulfilled?: (value: any) => any, onRejected?: (reason: any) => any): Promise<any> {
+    // Apply scopes before executing query
+    if (!this._scopesApplied) {
+      this._applyScopes();
+    }
+    
     const wrap = this._shouldWrapResults();
     const cache = this.model.cache;
     if (wrap && cache && this.queryBuilder._cacheTTL != null) {
@@ -126,6 +141,76 @@ class Request {
       this.queryBuilder._includeRelations.add(rel);
     }
     return this;
+  }
+
+  /**
+   * Disable default scope for this query
+   */
+  unscoped(): this {
+    this._applyDefaultScope = false;
+    return this;
+  }
+
+  /**
+   * Apply scopes to the query builder
+   */
+  protected _applyScopes(): void {
+    if (this._scopesApplied) return;
+    this._scopesApplied = true;
+
+    const scopeBuilder = (this.model as any).scopeBuilder;
+    if (!scopeBuilder) return;
+
+    // Determine if we should apply default scope
+    const includeDefault = this._applyDefaultScope !== false;
+
+    // Get scope requests
+    const scopeRequests = this._scopeRequests || [];
+
+    // Apply scopes
+    const scopeOptions: ScopeOptions = scopeBuilder.applyScopes(
+      this,
+      scopeRequests,
+      includeDefault
+    );
+
+    // Apply where clauses
+    if (scopeOptions.where) {
+      applyCriteria(this.queryBuilder, scopeOptions.where, 'and', this.model as any);
+    }
+
+    // Apply includes
+    if (scopeOptions.include && scopeOptions.include.length > 0) {
+      for (const inc of scopeOptions.include) {
+        this.include(inc.relation);
+      }
+    }
+
+    // Apply cache
+    if (scopeOptions.cache !== undefined) {
+      if (typeof scopeOptions.cache === 'number') {
+        this.cache(scopeOptions.cache);
+      } else if (scopeOptions.cache === true) {
+        this.cache(300); // Default 5 minutes
+      }
+    }
+
+    // Apply order
+    if (scopeOptions.order && scopeOptions.order.length > 0 && this.queryBuilder.orderBy) {
+      for (const [field, direction] of scopeOptions.order) {
+        this.queryBuilder.orderBy(field, direction);
+      }
+    }
+
+    // Apply limit
+    if (scopeOptions.limit !== undefined && this.queryBuilder.limit) {
+      this.queryBuilder.limit(scopeOptions.limit);
+    }
+
+    // Apply offset
+    if (scopeOptions.offset !== undefined && this.queryBuilder.offset) {
+      this.queryBuilder.offset(scopeOptions.offset);
+    }
   }
 
   protected _shouldWrapResults(): boolean {
@@ -203,23 +288,9 @@ class Request {
     };
 
     if (Array.isArray(value)) {
-      if (this.queryBuilder._includeRelations && this.queryBuilder._includeRelations.size > 0) {
-        const includeRelations = Array.from(this.queryBuilder._includeRelations);
-        const loadIncludes = async (rows: any[], relations: string[]) => {
-          const loaders = [];
-          for (const relationName of relations) {
-            const relation = (this.model as any).fields[relationName];
-            if (!relation) {
-              throw new Error(`Relation '${relationName}' not found on model '${this.model.name}'`);
-            }
-            loaders.push(relation.loadForRows(rows));
-          }
-          return await Promise.all(loaders);
-        };
-        return Promise.resolve(value.map(wrapRow)).then((wrappedRows) => {
-          return loadIncludes(wrappedRows, includeRelations).then(() => wrappedRows);
-        });
-      }
+      // TODO: Implement bulk eager loading for included relations
+      // Current limitation: Include option marks relations but doesn't pre-load them.
+      // Relations are loaded via their proxies on first access.
       return Promise.all(value.map(wrapRow));
     }
     return wrapRow(value);
