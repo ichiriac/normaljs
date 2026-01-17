@@ -170,8 +170,8 @@ class Model {
         this.scopeBuilder = new ScopeBuilder(this, scopes, defaultScope);
       } else {
         // Merge scopes if builder already exists
-        const existingScopes = { ...this.scopeBuilder['scopes'], ...scopes };
-        const existingDefault = defaultScope || this.scopeBuilder['defaultScope'];
+        const existingScopes = { ...this.scopeBuilder.scopes, ...scopes };
+        const existingDefault = defaultScope || this.scopeBuilder.defaultScope;
         this.scopeBuilder = new ScopeBuilder(this, existingScopes, existingDefault);
       }
     }
@@ -607,7 +607,7 @@ class Model {
     const request = new Request(this, this.repo.cnx(this.table).queryContext({ model: this }));
     
     // Apply default scope if it exists
-    if (this.scopeBuilder && this.scopeBuilder['defaultScope']) {
+    if (this.scopeBuilder && this.scopeBuilder.defaultScope) {
       request._applyDefaultScope = true;
     }
     

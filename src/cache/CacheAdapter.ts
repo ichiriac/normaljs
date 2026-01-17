@@ -87,8 +87,10 @@ export class InMemoryCacheAdapter implements CacheAdapter {
       return null;
     }
 
-    // Check if evicted by timestamp
-    if (evictTimestamp && entry.expires < evictTimestamp) {
+    // Check if evicted by timestamp marker
+    // If evictTimestamp is set and the entry expires after it,
+    // the entry was created after invalidation and is still valid
+    if (evictTimestamp && entry.expires <= evictTimestamp) {
       this.cache.delete(key);
       return null;
     }

@@ -288,9 +288,9 @@ class Request {
     };
 
     if (Array.isArray(value)) {
-      // Note: Include eager loading is handled by the relation proxies on individual records
-      // The include option in scopes just marks relations for eager access, but doesn't
-      // pre-load them in bulk. Each record will lazy-load relations on first access.
+      // TODO: Implement bulk eager loading for included relations
+      // Current limitation: Include option marks relations but doesn't pre-load them.
+      // Relations are loaded via their proxies on first access.
       return Promise.all(value.map(wrapRow));
     }
     return wrapRow(value);

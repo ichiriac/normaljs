@@ -51,8 +51,8 @@ export type ScopeRequest = string | { [name: string]: any[] };
  */
 export class ScopeBuilder {
   private model: Model;
-  private scopes: ScopesMap;
-  private defaultScope: ScopeDefinition | null;
+  public readonly scopes: ScopesMap;
+  public readonly defaultScope: ScopeDefinition | null;
 
   constructor(model: Model, scopes: ScopesMap = {}, defaultScope: ScopeDefinition | null = null) {
     this.model = model;
@@ -81,6 +81,10 @@ export class ScopeBuilder {
 
   /**
    * Extract options from a Request object (for function-based scopes)
+   * 
+   * TODO: Implement proper extraction of where/include/order/limit from Request
+   * For now, function-based scopes that return Request objects will modify
+   * the query builder directly, so we return empty options.
    */
   private extractOptionsFromRequest(_request: Request): ScopeOptions {
     // For now, return empty options - function-based scopes modify the QB directly
