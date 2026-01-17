@@ -195,9 +195,11 @@ export class ScopeBuilder {
       if (typeof scopeReq === 'string') {
         scopeName = scopeReq;
       } else {
-        // Object format: { scopeName: [args] }
+        // Object format: { scopeName: args } or { scopeName: [args] }
         scopeName = Object.keys(scopeReq)[0];
-        args = scopeReq[scopeName] || [];
+        const value = scopeReq[scopeName];
+        // Silently convert single value to array for convenience
+        args = Array.isArray(value) ? value : (value !== undefined ? [value] : []);
       }
 
       const scopeDef = this.scopes[scopeName];

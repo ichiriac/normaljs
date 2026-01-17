@@ -78,7 +78,10 @@ class Posts {
 // Apply a single scope
 const activeUsers = await repo.Users.scope('active');
 
-// Apply parameterized scope
+// Apply parameterized scope (single value - recommended)
+const recentPosts = await repo.Posts.scope({ recentDays: 30 });
+
+// Array syntax also supported for backward compatibility
 const recentPosts = await repo.Posts.scope({ recentDays: [30] });
 ```
 
@@ -88,6 +91,10 @@ Multiple scopes can be combined, and they are merged with AND logic for where cl
 
 ```javascript
 // Combine multiple scopes
+const popularActivePosts = await repo.Posts
+  .scope('active', { minViews: 1000 });
+
+// Array syntax also works
 const popularActivePosts = await repo.Posts
   .scope('active', { minViews: [1000] });
 

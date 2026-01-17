@@ -115,7 +115,7 @@ describe('Model Scopes', () => {
   });
 
   describe('Parameterized Scopes', () => {
-    test('applies function-based scope with parameters', async () => {
+    test('applies function-based scope with parameters (array syntax)', async () => {
       class Articles {
         static table = 'articles';
         static fields = {
@@ -148,6 +148,40 @@ describe('Model Scopes', () => {
       const recent = await repo.Articles.scope({ recentDays: [7] });
       expect(recent).toHaveLength(1);
       expect(recent[0].title).toBe('Recent');
+    });
+
+    test('applies function-based scope with single value (no array)', async () => {
+      class Blog {
+        static table = 'blog';
+        static fields = {
+          id: 'primary',
+          title: 'string',
+          views: { type: 'number', default: 0 },
+        };
+
+        static scopes = {
+          minViews: (qb: any, minimum = 50) => ({
+            where: { views: { gte: minimum } },
+          }),
+        };
+      }
+      Object.defineProperty(Blog, 'name', { value: 'Blog', configurable: true });
+
+      repo.register(Blog);
+      await repo.sync({ force: true });
+
+      await repo.Blog.create({ title: 'Popular', views: 200 });
+      await repo.Blog.create({ title: 'Medium', views: 75 });
+      await repo.Blog.create({ title: 'Low', views: 25 });
+
+      // Test with single value (more natural syntax)
+      const popular = await repo.Blog.scope({ minViews: 100 });
+      expect(popular).toHaveLength(1);
+      expect(popular[0].title).toBe('Popular');
+
+      // Test with array syntax still works (backward compatibility)
+      const mediumAndUp = await repo.Blog.scope({ minViews: [50] });
+      expect(mediumAndUp).toHaveLength(2);
     });
   });
 

@@ -205,11 +205,11 @@ async function main() {
   // Demo 2: Parameterized Scopes
   console.log('\n2️⃣ Parameterized Scopes\n');
 
-  const recentUsers = await repo.Users.scope({ recentDays: [10] });
+  const recentUsers = await repo.Users.scope({ recentDays: 10 });
   console.log(`   Users joined in last 10 days: ${recentUsers.length}`);
   recentUsers.forEach((u) => console.log(`   - ${u.name}`));
 
-  const recentPosts = await repo.Posts.scope({ recentDays: [7] });
+  const recentPosts = await repo.Posts.scope({ recentDays: 7 });
   console.log(`\n   Posts published in last 7 days: ${recentPosts.length}`);
   recentPosts.forEach((p) => console.log(`   - ${p.title} (${p.views} views)`));
 
@@ -250,7 +250,7 @@ async function main() {
   // Demo 7: Complex Composition
   console.log('\n7️⃣ Complex Composition\n');
 
-  const complexQuery = await repo.Posts.scope('published', { minViews: [150] }, 'recent');
+  const complexQuery = await repo.Posts.scope('published', { minViews: 150 }, 'recent');
   console.log(`   Published posts with 150+ views (recent first): ${complexQuery.length}`);
   complexQuery.forEach((p) => console.log(`   - ${p.title} (${p.views} views)`));
 
