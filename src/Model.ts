@@ -6,6 +6,7 @@ import { extendModel } from './utils/extender';
 import { applyCriteria } from './utils/criteria';
 import { IndexManager } from './IndexManager.js';
 import { LookupIds } from './LookupIds.js';
+import { ScopeBuilder, type ScopesMap, type ScopeDefinition, type ScopeRequest } from './ScopeBuilder.js';
 
 import { EventEmitter } from 'node:events';
 
@@ -39,6 +40,7 @@ class Model {
   public inheritField: any;
   public columns: string[];
   public events: EventEmitter;
+  public scopeBuilder: ScopeBuilder | null;
   /**
    * A model representation.
    * @param {*} repo
@@ -77,6 +79,7 @@ class Model {
     this.inheritField = null;
     this.columns = [];
     this.events = new EventEmitter();
+    this.scopeBuilder = null;
   }
   /**
    * Returns the discriminator field if configured on this model (parent in an inheritance tree).
@@ -157,6 +160,20 @@ class Model {
       MixinClass.mixins.forEach((mix) => {
         this.mixins.add(mix);
       });
+    }
+    // Initialize scope builder if scopes or defaultScope are defined
+    if (MixinClass.scopes || MixinClass.defaultScope) {
+      const scopes: ScopesMap = MixinClass.scopes || {};
+      const defaultScope: ScopeDefinition | null = MixinClass.defaultScope || null;
+      
+      if (!this.scopeBuilder) {
+        this.scopeBuilder = new ScopeBuilder(this, scopes, defaultScope);
+      } else {
+        // Merge scopes if builder already exists
+        const existingScopes = { ...this.scopeBuilder['scopes'], ...scopes };
+        const existingDefault = defaultScope || this.scopeBuilder['defaultScope'];
+        this.scopeBuilder = new ScopeBuilder(this, existingScopes, existingDefault);
+      }
     }
     if (typeof MixinClass === 'function') {
       extendModel(this, MixinClass);
@@ -587,7 +604,42 @@ class Model {
   query(): Request {
     this._init();
     // @fixme should flush any changes before : this.repo.flush();
-    return new Request(this, this.repo.cnx(this.table).queryContext({ model: this }));
+    const request = new Request(this, this.repo.cnx(this.table).queryContext({ model: this }));
+    
+    // Apply default scope if it exists
+    if (this.scopeBuilder && this.scopeBuilder['defaultScope']) {
+      request._applyDefaultScope = true;
+    }
+    
+    return request;
+  }
+
+  /**
+   * Apply one or more scopes to a query
+   * @param {...ScopeRequest} scopeRequests Scope names or objects with scope names and args
+   * @returns Request
+   */
+  scope(...scopeRequests: ScopeRequest[]): Request {
+    this._init();
+    const request = this.query();
+    
+    if (!this.scopeBuilder) {
+      throw new Error(`Model '${this.name}' has no scopes defined`);
+    }
+    
+    request._scopeRequests = scopeRequests;
+    return request;
+  }
+
+  /**
+   * Create a query that bypasses the default scope
+   * @returns Request
+   */
+  unscoped(): Request {
+    this._init();
+    const request = new Request(this, this.repo.cnx(this.table).queryContext({ model: this }));
+    request._applyDefaultScope = false;
+    return request;
   }
 
   /**
