@@ -5,7 +5,7 @@ const sidebars = {
       type: 'category',
       label: 'Getting Started',
       collapsed: false,
-      items: ['index', 'use-cases', 'cookbook', 'adoption-sequelize'],
+      items: ['index', 'use-cases', 'cookbook'],
     },
     {
       type: 'category',
@@ -16,6 +16,11 @@ const sidebars = {
       type: 'category',
       label: 'Advanced',
       items: ['cache', 'transactions', 'hooks', 'custom-fields', 'relational-filters'],
+    },
+    {
+      type: 'category',
+      label: 'Migration Guides',
+      items: ['adoption-sequelize'],
     },
   ],
 };
