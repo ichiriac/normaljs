@@ -41,7 +41,6 @@ const conn = new Connection({
   client: 'sqlite3',
   connection: { filename: ':memory:' }
 });
-await conn.connect();
 const repo = new Repository(conn);
 
 // 2. Define models with relations

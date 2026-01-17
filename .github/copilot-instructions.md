@@ -13,8 +13,7 @@ const conn = new Connection({
   connection: { filename: ':memory:' } // or real DB config
 });
 
-// 2. Connect and create repository
-await conn.connect();
+// 2. Create repository (connection managed automatically)
 const repo = new Repository(conn);
 
 // 3. Define models as ES6 classes
