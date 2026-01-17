@@ -1,67 +1,137 @@
 ---
 id: models
 title: Models Reference
+keywords: [models, schema, definition, class, fields, relations, queries, active record]
 ---
 
 # Models
 
 NormalJS models are ES6 classes that declare metadata via static properties. They map to database tables, expose a fluent query API, and return active record instances (objects with getters/methods).
 
-See fields reference in `docs/FIELDS.md` for all column types and relation options.
+## Quick Reference
 
-## Minimal example
+✅ **DO:**
+- Always include `static _name` (required for registration)
+- Use `static fields` for schema definition
+- Add instance methods/getters for computed properties
+- Add static methods for custom query scopes
+- Use transactions for multi-step operations
+
+❌ **DON'T:**
+- Never instantiate with `new ModelClass()`
+- Don't forget `static _name` 
+- Don't modify record properties directly (use `update()`)
+- Don't access relations without loading them first
+- Don't use `sync({ force: true })` in production
+
+## Basic Model Definition
+
+### Minimal Example
 
 ```js
 class Users {
-  static _name = 'Users'; // Registry key (required)
-  static table = 'users'; // DB table (optional; inferred from name)
-  static cache = true; // Enable cache (true=default TTL, or a number in seconds)
+  static _name = 'Users'; // REQUIRED: Registry key
+  static table = 'users'; // Optional: DB table (defaults to snake_case of _name)
+  static cache = 300; // Optional: Enable cache with 300s TTL
 
   static fields = {
-    id: 'primary',
+    id: 'primary', // Auto-increment primary key
     email: { type: 'string', unique: true, required: true },
     active: { type: 'boolean', default: true },
     created_at: { type: 'datetime', default: () => new Date() },
   };
 
-  // Instance API works on active records
+  // Instance methods work on active records
   get isStaff() {
-    return this.email.endsWith('@example.com');
+    return this.email?.endsWith('@example.com');
   }
+  
+  // Static methods for query scopes
+  static activeUsers() {
+    return this.where({ active: true });
+  }
+}
+
+// Register the model
+repo.register(Users);
+
+// Access via repository
+const Users = repo.get('Users');
+```
+
+### Model Properties
+
+| Property | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `static _name` | ✅ Yes | Registry key for the model | `'Users'`, `'BlogPosts'` |
+| `static table` | ❌ No | Database table name | `'users'`, `'blog_posts'` |
+| `static fields` | ✅ Yes | Field definitions | `{ id: 'primary', ... }` |
+| `static cache` | ❌ No | Cache TTL (seconds) or `true` for default (300s) | `300`, `true`, `false` |
+| `static indexes` | ❌ No | Index definitions | `['email', ['name', 'age']]` |
+
+### Field Types
+
+Quick reference (see [Fields](fields) for complete documentation):
+
+```js
+static fields = {
+  // Primary key (shorthand)
+  id: 'primary', // Auto-increment integer PK
+  
+  // Basic types
+  name: 'string',           // VARCHAR(255)
+  age: 'integer',           // INTEGER
+  price: 'float',           // FLOAT/DOUBLE
+  active: 'boolean',        // BOOLEAN
+  bio: 'text',              // TEXT
+  data: 'json',             // JSON/JSONB
+  created: 'datetime',      // DATETIME/TIMESTAMP
+  birthday: 'date',         // DATE
+  
+  // With constraints
+  email: { type: 'string', unique: true, required: true, size: 255 },
+  count: { type: 'integer', default: 0, index: true },
+  score: { type: 'float', precision: 2 },
+  status: { type: 'enum', values: ['draft', 'published', 'archived'] },
+  
+  // Relations
+  author_id: { type: 'many-to-one', model: 'Users' }, // FK column
+  posts: { type: 'one-to-many', foreign: 'Posts.author_id' }, // Virtual
+  tags: { type: 'many-to-many', model: 'Tags' } // Auto join table
 }
 ```
 
-- `static _name` is mandatory and used as the model key in the repository registry.
-- `static table` defaults to a snake_cased form of `name` (e.g. `Users` -> `users`).
-- `static cache` can be `true` (uses default TTL of 300s) or a number (TTL seconds). Disable per model by omitting or setting falsy. The global cache must also be enabled at the repository level via env; see `src/Repository.js`.
+## Defining Relations
 
-## Defining fields and relations
+### Many-to-One (Belongs To)
 
-Declare columns and relations under `static fields`. See `docs/FIELDS.md` for full details. Quick summary:
-
-- Primitives: `primary`, `integer|number`, `float`, `boolean`, `string`, `text`, `date`, `datetime|timestamp`, `enum`, `json`, `reference`.
-- Relations:
-  - Many-to-one: `{ type: 'many-to-one', model: 'OtherModel', cascade?: boolean }`
-  - One-to-many: `{ type: 'one-to-many', foreign: 'ChildModel.fkField' }`
-  - Many-to-many: `{ type: 'many-to-many', model: 'OtherModel', joinTable?: 'rel_custom' }`
-
-Example with relations:
+Creates a foreign key column on the current model.
 
 ```js
+// ✅ Correct: Define many-to-one relation
 class Posts {
   static _name = 'Posts';
   static fields = {
     id: 'primary',
-    title: { type: 'string', unique: true },
-    content: { type: 'text', required: true },
-    author: { type: 'many-to-one', model: 'Users' },
-    tags: { type: 'many-to-many', model: 'Tags' },
-    comments: { type: 'one-to-many', foreign: 'Comments.post' },
+    title: 'string',
+    author_id: { type: 'many-to-one', model: 'Users' }, // Creates FK column
   };
 }
+
+// Usage
+const post = await Posts.findById(1);
+await post.author.load(); // Load related user
+console.log(post.author.email);
+
+// Change relation - Method 1: Direct modification
+post.author_id = newUserId;
+// Persists automatically
+
+// Change relation - Method 2: write() with key/value pairs
+await post.write({ author_id: newUserId });
 ```
 
-## Querying and active records
+### One-to-Many (Has Many)
 
 - `Model.query()` returns a query builder proxy. Chain any Knex method (e.g., `where`, `join`, `limit`, `orderBy`).
 - `Model.where(...)` is a shorthand for `Model.query().where(...)`.
@@ -70,7 +140,16 @@ class Posts {
 - **NEW**: `Model.scope(...)` applies predefined query scopes. See [Scopes](./scopes.md) for details.
 - **NEW**: `Model.unscoped()` bypasses the default scope if defined.
 
-Results are wrapped into active record instances. With cache enabled, read queries initially select only `id` for performance; accessing other fields triggers batched fetching behind the scenes.
+```js
+// ✅ Correct: Define one-to-many relation
+class Users {
+  static _name = 'Users';
+  static fields = {
+    id: 'primary',
+    email: 'string',
+    posts: { type: 'one-to-many', foreign: 'Posts.author_id' }, // Virtual field
+  };
+}
 
 ## Scopes
 
@@ -112,16 +191,418 @@ For a comprehensive guide on scopes, including parameterized scopes, caching, an
 
 ## Creating and flushing
 
-- `await Model.create(data)` inserts a new record and returns an active record instance. Many-to-many collections can be pre-filled by setting the relation field to an array of ids (they are written after the main row is inserted).
-- `await repo.flush()` persists pending changes across all models. `await model.flush()` flushes one model.
+// Query with filters
+const publishedPosts = await user.posts.where({ published: true });
+```
+
+### Many-to-Many
+
+Automatically creates a join table.
+
+```js
+// ✅ Correct: Define many-to-many relation
+class Posts {
+  static _name = 'Posts';
+  static fields = {
+    id: 'primary',
+    title: 'string',
+    tags: { type: 'many-to-many', model: 'Tags' }, // Auto-creates rel_posts_tags
+  };
+}
+
+class Tags {
+  static _name = 'Tags';
+  static fields = {
+    id: 'primary',
+    name: 'string',
+    posts: { type: 'many-to-many', model: 'Posts' }, // Same join table
+  };
+}
+
+// Usage
+const post = await Posts.findById(1);
+
+// Load relations
+await post.tags.load();
+post.tags.items.forEach(tag => console.log(tag.name));
+
+// Manage relations
+await post.tags.add(tagId);        // Add a tag
+await post.tags.remove(tagId);     // Remove a tag
+await post.tags.set([id1, id2]);   // Replace all tags
+
+// Create with relations
+const post = await Posts.create({
+  title: 'Hello World',
+  tags: [tagId1, tagId2] // Automatically creates relations
+});
+```
+
+### Common Relation Patterns
+
+```js
+class Posts {
+  static _name = 'Posts';
+  static fields = {
+    id: 'primary',
+    title: 'string',
+    content: 'text',
+    
+    // Many-to-one relations (FK columns)
+    author_id: { type: 'many-to-one', model: 'Users' },
+    category_id: { type: 'many-to-one', model: 'Categories', cascade: true },
+    
+    // One-to-many relations (virtual)
+    comments: { type: 'one-to-many', foreign: 'Comments.post_id' },
+    
+    // Many-to-many relations (join table)
+    tags: { type: 'many-to-many', model: 'Tags', joinTable: 'posts_tags' }
+  };
+}
+```
+
+## Querying Models
+
+### Basic Queries
+
+```js
+const Users = repo.get('Users');
+
+// ✅ Find by ID (uses cache)
+const user = await Users.findById(1);
+
+// ✅ Find one by condition
+const user = await Users.where({ email: 'john@example.com' }).first();
+
+// ❌ DON'T: Forget to check for null
+const user = await Users.where({ email }).first();
+console.log(user.name); // May throw if user is null!
+
+// ✅ DO: Always check for null
+const user = await Users.where({ email }).first();
+if (!user) {
+  throw new Error('User not found');
+}
+
+// ✅ Find many with filters
+const users = await Users
+  .where({ active: true })
+  .orderBy('created_at', 'desc')
+  .limit(10)
+  .find();
+
+// ✅ Count records
+const count = await Users.where({ active: true }).count();
+
+// ✅ Check existence
+const exists = await Users.where({ email }).count() > 0;
+```
+
+### Complex Filters
+
+```js
+const Posts = repo.get('Posts');
+
+// ✅ Multiple conditions (AND)
+const posts = await Posts
+  .where({ published: true })
+  .where('views', '>', 1000)
+  .where('created_at', '>=', lastMonth)
+  .find();
+
+// ✅ JSON criteria with OR
+const posts = await Posts.where({
+  and: [
+    ['published', '=', true],
+    {
+      or: [
+        ['featured', '=', true],
+        ['views', '>', 1000]
+      ]
+    }
+  ]
+}).find();
+
+// ✅ LIKE queries
+const posts = await Posts
+  .where('title', 'like', '%tutorial%')
+  .find();
+
+// ✅ IN queries
+const posts = await Posts
+  .whereIn('category_id', [1, 2, 3])
+  .find();
+```
+
+### Eager Loading Relations
+
+```js
+const Posts = repo.get('Posts');
+
+// ✅ Load single relation
+const posts = await Posts
+  .where({ published: true })
+  .include('author')
+  .find();
+
+// ✅ Load multiple relations
+const post = await Posts
+  .where({ id: 1 })
+  .include('author', 'tags', 'comments')
+  .first();
+
+// ❌ DON'T: Access unloaded relations
+const post = await Posts.findById(1);
+console.log(post.author.name); // May be undefined!
+
+// ✅ DO: Load relations first
+const post = await Posts
+  .where({ id: 1 })
+  .include('author')
+  .first();
+console.log(post.author.name);
+
+// ✅ OR: Lazy load
+const post = await Posts.findById(1);
+await post.author.load();
+console.log(post.author.name);
+```
+
+### Custom Query Scopes
+
+```js
+// ✅ Add static methods for reusable queries
+class Posts {
+  static _name = 'Posts';
+  static fields = {
+    id: 'primary',
+    published: 'boolean',
+    featured: 'boolean',
+    views: 'integer'
+  };
+  
+  // Query scope for published posts
+  static published() {
+    return this.where({ published: true });
+  }
+  
+  // Query scope for popular posts
+  static popular(minViews = 1000) {
+    return this.where('views', '>=', minViews);
+  }
+  
+  // Combine scopes
+  static trending() {
+    return this.published()
+      .where({ featured: true })
+      .orderBy('views', 'desc');
+  }
+}
+
+// Usage
+const Posts = repo.get('Posts');
+const trendingPosts = await Posts.trending().limit(10).find();
+const popularPublished = await Posts.published().popular(5000).find();
+```
+
+## Creating and Updating Records
+
+### Create Records
+
+```js
+const Users = repo.get('Users');
+
+// ✅ Simple create
+const user = await Users.create({
+  email: 'john@example.com',
+  name: 'John Doe'
+});
+
+// ❌ DON'T: Create without transaction for multi-step ops
+const user = await Users.create({ email });
+const profile = await Profiles.create({ user_id: user.id }); // Not atomic!
+
+// ✅ DO: Use transactions
+await repo.transaction(async tx => {
+  const Users = tx.get('Users');
+  const Profiles = tx.get('Profiles');
+  
+  const user = await Users.create({ email });
+  await Profiles.create({ user_id: user.id });
+});
+
+// ✅ Create with relations
+const post = await Posts.create({
+  title: 'Hello World',
+  author_id: userId,
+  tags: [tagId1, tagId2] // Creates many-to-many relations
+});
+```
+
+### Update Records
+
+```js
+const Users = repo.get('Users');
+
+// ✅ Method 1: Direct modification (optimal for auto-persist)
+const user = await Users.findById(1);
+user.name = 'Jane Smith';
+user.updated_at = new Date();
+// Changes persist automatically on next query or transaction flush
+
+// ✅ Method 2: write() with key/value pairs (immediate flush)
+const user = await Users.findById(1);
+await user.write({ 
+  name: 'Jane Smith',
+  updated_at: new Date()
+});
+
+// ❌ DON'T: Use update() method
+const user = await Users.findById(1);
+await user.update({ email: 'new@example.com' }); // Method doesn't exist!
+
+// ❌ DON'T: Modify then call write() without arguments
+user.email = 'new@example.com';
+await user.write(); // Anti-pattern!
+
+// ✅ DO: Choose one of the two correct methods
+user.email = 'new@example.com'; // Direct (auto-persists)
+// OR
+await user.write({ email: 'new@example.com' }); // Immediate flush
+
+// ❌ DON'T: Bulk update using Knex directly (bypasses hooks!)
+await Users.query()
+  .where('last_login', '<', sixMonthsAgo)
+  .update({ active: false }); // Bypasses all hooks and validation!
+
+// ✅ DO: Load records and update individually in transaction
+await repo.transaction(async tx => {
+  const Users = tx.get('Users');
+  const users = await Users.where('last_login', '<', sixMonthsAgo).find();
+  for (const user of users) {
+    await user.write({ active: false });
+  }
+});
+```
+
+### Delete Records
+
+```js
+const Users = repo.get('Users');
+
+// ✅ Delete a record
+const user = await Users.findById(1);
+await user.unlink();
+
+// ❌ DON'T: Use delete()
+await user.delete(); // Wrong method!
+
+// ✅ DO: Use unlink()
+await user.unlink();
+
+// ❌ DON'T: Bulk delete using Knex directly (bypasses hooks!)
+await Users.query()
+  .where('created_at', '<', oneYearAgo)
+  .delete(); // Bypasses cascade logic and hooks!
+
+// ✅ DO: Load records and delete individually in transaction
+await repo.transaction(async tx => {
+  const Users = tx.get('Users');
+  const users = await Users.where('created_at', '<', oneYearAgo).find();
+  for (const user of users) {
+    await user.unlink();
+  }
+});
+```
+
+## Instance Methods and Getters
+
+### Adding Computed Properties
+
+```js
+class Users {
+  static _name = 'Users';
+  static fields = {
+    id: 'primary',
+    email: 'string',
+    first_name: 'string',
+    last_name: 'string'
+  };
+  
+  // ✅ Instance getter for computed values
+  get fullName() {
+    return `${this.first_name} ${this.last_name}`.trim();
+  }
+  
+  // ✅ Instance getter with logic
+  get domain() {
+    return this.email?.split('@')[1];
+  }
+  
+  // ❌ DON'T: Use async getters
+  async get postCount() { // Invalid!
+    return await this.posts.count();
+  }
+  
+  // ✅ DO: Use async methods instead
+  async getPostCount() {
+    return await this.posts.count();
+  }
+}
+
+// Usage
+const user = await Users.findById(1);
+console.log(user.fullName); // Synchronous getter
+const count = await user.getPostCount(); // Async method
+```
+
+### Lifecycle Hooks
+
+```js
+class Posts {
+  static _name = 'Posts';
+  static fields = {
+    id: 'primary',
+    title: 'string',
+    slug: 'string',
+    updated_at: 'datetime'
+  };
+  
+  // ✅ Pre-create hook (before insert)
+  async pre_create() {
+    if (!this.slug) {
+      this.slug = this.title.toLowerCase().replace(/\s+/g, '-');
+    }
+  }
+  
+  // ✅ Post-create hook (after insert)
+  async post_create() {
+    console.log(`Post ${this.id} created`);
+    // Send notification, update cache, etc.
+  }
+  
+  // ✅ Pre-update hook (before update)
+  async pre_update() {
+    this.updated_at = new Date();
+  }
+  
+  // ✅ Post-update hook (after update)
+  async post_update() {
+    console.log(`Post ${this.id} updated`);
+  }
+  
+  // ✅ Pre-validate hook (for validation)
+  async pre_validate() {
+    if (this.title && this.title.length < 3) {
+      throw new Error('Title must be at least 3 characters');
+    }
+  }
+}
+```
 
 ## Indexes and Unique Constraints
 
-You can define indexes and unique constraints at the model level using the `static indexes` property. This is useful for composite indexes, partial indexes, and fine-grained control over index behavior.
-
-### Simple syntax (array)
-
-For basic single-field or composite indexes, use an array:
+### Simple Indexes
 
 ```js
 class Articles {
@@ -129,12 +610,15 @@ class Articles {
   static fields = {
     id: 'primary',
     title: { type: 'string', required: true },
-    slug: { type: 'string', required: true },
-    published: { type: 'boolean', default: false },
+    slug: { type: 'string', required: true, unique: true }, // Unique index
+    published: { type: 'boolean', default: false, index: true }, // Simple index
   };
 
-  // Create indexes on 'slug' and ['title', 'published']
-  static indexes = ['slug', ['title', 'published']];
+  // ✅ Additional composite indexes
+  static indexes = [
+    ['title', 'published'], // Composite index
+    'slug' // Single-field index (if not already defined in fields)
+  ];
 }
 ```
 
