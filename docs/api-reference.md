@@ -17,7 +17,7 @@ Creates a Knex database connection instance.
 **Parameters:**
 - `config` (object): Knex configuration object
   - `client` (string): Database client ('pg', 'mysql2', 'sqlite3', 'mssql')
-  - `connection` (object|string): Connection details or connection string
+  - `connection` (object or string): Connection details or connection string
   - `pool` (object): Connection pool settings
     - `min` (number): Minimum pool size (default: 2)
     - `max` (number): Maximum pool size (default: 10)
@@ -144,9 +144,9 @@ All query methods are chainable and return a query builder until a terminal meth
 Finds a single record by primary key. Uses cache if enabled.
 
 **Parameters:**
-- `id` (number|string): Primary key value
+- `id` (number or string): Primary key value
 
-**Returns:** Promise<Record|null>
+**Returns:** Promise resolving to Record or null
 
 **Example:**
 ```js
@@ -166,8 +166,8 @@ Adds WHERE conditions to the query. Can be called multiple times to add AND cond
 3. `where(field, operator, value)` - Field with operator
 
 **Parameters:**
-- `criteria` (object|string): Filter criteria or field name
-- `operator` (string): Comparison operator ('=', '>', '<', '>=', '<=', '!=', 'like', 'in', 'is', 'is not')
+- `criteria` (object or string): Filter criteria or field name
+- `operator` (string): Comparison operator (`=`, `>`, `<`, `>=`, `<=`, `!=`, `like`, `in`, `is`, `is not`)
 - `value` (any): Comparison value
 
 **Returns:** Query builder (chainable)
@@ -345,7 +345,7 @@ console.log(`Found ${users.length} users`);
 
 Executes the query and returns the first record or null. Terminal method.
 
-**Returns:** Promise<Record|null>
+**Returns:** Promise resolving to Record or null
 
 **Example:**
 ```js
@@ -513,7 +513,7 @@ console.log(`User has ${publishedPosts.length} published posts`);
 Adds a relation (many-to-many or one-to-many).
 
 **Parameters:**
-- `id` (number|Record): Related record ID or record instance
+- `id` (number or Record): Related record ID or record instance
 
 **Returns:** Promise<void>
 
@@ -533,7 +533,7 @@ console.log('Tag added to post');
 Removes a relation (many-to-many or one-to-many).
 
 **Parameters:**
-- `id` (number|Record): Related record ID or record instance
+- `id` (number or Record): Related record ID or record instance
 
 **Returns:** Promise<void>
 
