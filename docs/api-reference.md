@@ -133,6 +133,66 @@ Synchronizes database schema from model definitions. **Use only in development!*
 await repo.sync({ force: true });
 ```
 
+### `repo.get_context(key, defaultValue)`
+
+Retrieves a context value from the repository.
+
+**Parameters:**
+- `key` (string): Context key to retrieve
+- `defaultValue` (any, optional): Value to return if key doesn't exist
+
+**Returns:** any - The context value or default value
+
+**Example:**
+```js
+// Set context
+repo.set_context('tenant_id', 'tenant-123');
+repo.set_context('user_role', 'admin');
+
+// Get context
+const tenantId = repo.get_context('tenant_id'); // 'tenant-123'
+const locale = repo.get_context('locale', 'en-US'); // Returns default 'en-US'
+```
+
+### `repo.set_context(key, value)`
+
+Sets a context value in the repository.
+
+**Parameters:**
+- `key` (string): Context key
+- `value` (any): Value to store
+
+**Returns:** Repository instance (chainable)
+
+**Example:**
+```js
+// Store multi-tenancy context
+repo.set_context('tenant_id', 'tenant-123');
+
+// Store user context
+repo.set_context('current_user_id', 999);
+repo.set_context('current_user_role', 'admin');
+
+// Store feature flags
+repo.set_context('feature_new_ui', true);
+
+// Store request metadata
+repo.set_context('request_id', 'req-abc123');
+repo.set_context('request_timestamp', new Date());
+```
+
+**Use Cases:**
+- Multi-tenancy: Store tenant ID for filtering queries
+- User context: Track current user for audit trails
+- Feature flags: Enable/disable features at runtime
+- Request metadata: Store request ID, timestamp, locale
+- Configuration: Runtime settings without global variables
+
+**Transaction Behavior:**
+- Transactions inherit parent context at creation
+- Changes in transactions are isolated (don't affect parent)
+- Context is accessible from models and records within the transaction
+
 ---
 
 ## Model - Query Methods
@@ -416,6 +476,50 @@ const count = await Users.query()
   .first();
 ```
 
+### `Model.get_context(key, defaultValue)`
+
+Gets a context value from the repository.
+
+**Parameters:**
+- `key` (string): Context key to retrieve
+- `defaultValue` (any, optional): Value to return if key doesn't exist
+
+**Returns:** any - The context value or default value
+
+**Example:**
+```js
+const Users = repo.get('Users');
+
+// Get context from model
+const tenantId = Users.get_context('tenant_id');
+
+// Use in model methods
+class Users {
+  static async findForCurrentTenant() {
+    const tenantId = this.get_context('tenant_id');
+    return this.where({ tenant_id: tenantId }).find();
+  }
+}
+```
+
+### `Model.set_context(key, value)`
+
+Sets a context value in the repository.
+
+**Parameters:**
+- `key` (string): Context key
+- `value` (any): Value to store
+
+**Returns:** Model instance (chainable)
+
+**Example:**
+```js
+const Users = repo.get('Users');
+
+// Set context from model
+Users.set_context('last_query_time', new Date());
+```
+
 ---
 
 ## Record - Instance Methods
@@ -461,6 +565,50 @@ const user = await Users.findById(1);
 await user.unlink();
 
 console.log('User deleted');
+```
+
+### `record.get_context(key, defaultValue)`
+
+Gets a context value from the repository.
+
+**Parameters:**
+- `key` (string): Context key to retrieve
+- `defaultValue` (any, optional): Value to return if key doesn't exist
+
+**Returns:** any - The context value or default value
+
+**Example:**
+```js
+const user = await Users.findById(1);
+
+// Get context from record
+const tenantId = user.get_context('tenant_id');
+
+// Use in hooks
+class Users {
+  async pre_create() {
+    const currentUserId = this.get_context('current_user_id');
+    this.created_by = currentUserId;
+  }
+}
+```
+
+### `record.set_context(key, value)`
+
+Sets a context value in the repository.
+
+**Parameters:**
+- `key` (string): Context key
+- `value` (any): Value to store
+
+**Returns:** Record instance (chainable)
+
+**Example:**
+```js
+const user = await Users.findById(1);
+
+// Set context from record
+user.set_context('last_accessed_user_id', user.id);
 ```
 
 ---
