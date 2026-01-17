@@ -80,6 +80,8 @@ class Repository {
   public models: Record<string, Model> = {};
   /** Number of queries emitted on the underlying knex instance (best-effort). */
   public queryCount = 0;
+  /** Repository-level context storage. */
+  private _context: Map<string, any> = new Map();
 
   /**
    * @param connection Knex connection or a minimal wrapper
@@ -227,6 +229,10 @@ class Repository {
           : null;
       },
     });
+    // Inherit context from parent repository
+    for (const [key, value] of this._context.entries()) {
+      txRepo._context.set(key, value);
+    }
     let result;
     // Re-register models with the same metadata
     for (const name of Object.keys(this.models)) {
@@ -273,6 +279,30 @@ class Repository {
       if ((model as any).abstract) continue;
       await (model as any).flush();
     }
+    return this;
+  }
+
+  /**
+   * Get a context value by key with an optional default value.
+   * @param {string} key - The context key
+   * @param {any} [defaultValue] - The default value if key not found
+   * @returns {any} The context value or default value
+   */
+  get_context(key: string, defaultValue?: any): any {
+    if (this._context.has(key)) {
+      return this._context.get(key);
+    }
+    return defaultValue;
+  }
+
+  /**
+   * Set a context value by key.
+   * @param {string} key - The context key
+   * @param {any} value - The value to set
+   * @returns {this}
+   */
+  set_context(key: string, value: any): this {
+    this._context.set(key, value);
     return this;
   }
 

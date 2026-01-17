@@ -257,6 +257,12 @@ repo.register({ Payment, CardPayment });
   - Per-model invalidation markers (`$Model`) to evict request caches without dropping entry caches.
   - Centralized in-memory cache across processes with UDP-based clustering.
   - Discovery protocol auto-syncs peer list for invalidations.
+- Repository Context
+  - **NEW**: Repository-wide context accessible in transactions, models, and records.
+  - `get_context(key, defaultValue)` retrieves context values.
+  - `set_context(key, value)` stores context values.
+  - Transactions inherit parent context but modifications are isolated.
+  - Use cases: multi-tenancy, user context, feature flags, request metadata.
 - Schema sync
   - Create/update tables from model fields with `repo.sync()`.
   - Migration-safe helpers for column replacement and index updates.
