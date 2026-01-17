@@ -701,6 +701,27 @@ class Model {
   findOne(where: any): Request {
     return this.firstWhere(where);
   }
+
+  /**
+   * Get a context value from the repository.
+   * @param {string} key - The context key
+   * @param {any} [defaultValue] - The default value if key not found
+   * @returns {any} The context value or default value
+   */
+  get_context(key: string, defaultValue?: any): any {
+    return this.repo.get_context(key, defaultValue);
+  }
+
+  /**
+   * Set a context value in the repository.
+   * @param {string} key - The context key
+   * @param {any} value - The value to set
+   * @returns {this}
+   */
+  set_context(key: string, value: any): this {
+    this.repo.set_context(key, value);
+    return this;
+  }
 }
 
 export { Model };
