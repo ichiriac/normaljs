@@ -14,6 +14,7 @@ const { Connection, Repository } = require('../../dist/index.js');
 
 // User model with scopes
 class Users {
+  static _name = 'Users';
   static table = 'users';
   static cache = true;
 
@@ -57,10 +58,10 @@ class Users {
     return `@${this.username}`;
   }
 }
-Object.defineProperty(Users, 'name', { value: 'Users', configurable: true });
 
 // Post model with scopes
 class Posts {
+  static _name = 'Posts';
   static table = 'posts';
   static cache = true;
 
@@ -108,7 +109,6 @@ class Posts {
     }),
   };
 }
-Object.defineProperty(Posts, 'name', { value: 'Posts', configurable: true });
 
 async function main() {
   // Setup
@@ -189,9 +189,7 @@ async function main() {
   });
 
   // Soft delete one user
-  await repo.Users.query()
-    .where({ id: charlie.id })
-    .update({ deleted_at: new Date() });
+  await charlie.write({ deleted_at: new Date() });
 
   // Demo 1: Basic Scopes
   console.log('1️⃣ Basic Scopes\n');
