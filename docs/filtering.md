@@ -16,16 +16,33 @@ The goals of the filtering DSL are:
 
 ## Quick start
 
-You can filter in three complementary ways:
+You can filter in four complementary ways:
 
-1. Simple Knex‑style object filter (equality only)
+1. Model Scopes (reusable, composable filters)
+
+```js
+// Define once on the model
+class Users {
+  static scopes = {
+    active: { where: { status: 'active' } },
+    recent: { order: [['created_at', 'DESC']], limit: 10 },
+  };
+}
+
+// Use everywhere
+await repo.Users.scope('active', 'recent');
+```
+
+See [Scopes](./scopes.md) for comprehensive documentation.
+
+2. Simple Knex‑style object filter (equality only)
 
 ```js
 // WHERE status = 'active' AND org_id = 42
 await repo.get('Users').where({ status: 'active', org_id: 42 });
 ```
 
-2. Chained query builder methods (full Knex power)
+3. Chained query builder methods (full Knex power)
 
 ```js
 await repo
@@ -37,7 +54,7 @@ await repo
   .limit(50);
 ```
 
-3. JSON Criteria (recommended for UI/API payloads)
+4. JSON Criteria (recommended for UI/API payloads)
 
 ```json
 {

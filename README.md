@@ -229,6 +229,7 @@ repo.register({ Payment, CardPayment });
   - Simple class with `static _name`, `static table`, `static fields`.
   - Extension system: register multiple times with same `static _name` to add/override fields and behavior.
   - Inheritance with discriminators for polymorphic models.
+  - **NEW**: Model scopes for reusable query filters and eager loading patterns.
 - Fields
   - Built-ins: primary, integer/float, string/text, boolean, date/datetime, enum, json, reference.
   - Constraints: `default`, `required`, `unique`, `index`.
@@ -239,6 +240,12 @@ repo.register({ Payment, CardPayment });
   - n:m via paired `many-to-many` (auto-join table).
   - Relation proxies on instances: `add`, `remove`, `load`.
   - **NEW**: Automatic join generation for relational filters (e.g., `where({ 'author.organization.name': 'ACME' })`).
+- Scopes
+  - Define reusable query patterns at the model level.
+  - Support for `defaultScope` applied to all queries unless bypassed.
+  - Parameterized scopes via functions.
+  - Composable scopes with deterministic merging.
+  - **NEW**: See `docs/scopes.md` for comprehensive guide.
 - Transactions
   - `repo.transaction(async (tx) => { /* ... */ })` gives an isolated tx-bound repository.
   - Post-commit cache flush of changed records.
@@ -260,6 +267,7 @@ See full field reference in `docs/fields.md`.
 
 - `docs/models.md` — Model definitions, inheritance, and extension system.
 - `docs/fields.md` — Built-in field types and options.
+- `docs/scopes.md` — **NEW**: Model scopes for reusable query filters.
 - `docs/requests.md` — Request API, criteria DSL, and request-level caching.
 - `docs/relational-filters.md` — **NEW**: Automatic joins for relational field filters.
 - `docs/cache.md` — Cache architecture, connection options, discovery, and model cache options.
