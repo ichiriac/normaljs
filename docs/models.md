@@ -191,6 +191,7 @@ For a comprehensive guide on scopes, including parameterized scopes, caching, an
 
 ## Creating and flushing
 
+```js
 // Query with filters
 const publishedPosts = await user.posts.where({ published: true });
 ```
