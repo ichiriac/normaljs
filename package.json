@@ -1,6 +1,6 @@
 {
   "name": "normaljs",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "NormalJS : Node Object Relational Mapper Abstraction Layer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,7 +23,7 @@
     "docs:build": "docusaurus build",
     "docs:serve": "docusaurus serve --dir build --port 3002"
   },
-  "website": "https://ichiriac.github.io/normal/",
+  "website": "https://ichiriac.github.io/normaljs/",
   "keywords": [
     "orm",
     "sql",
