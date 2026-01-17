@@ -123,7 +123,7 @@ Synchronizes database schema from model definitions. **Use only in development!*
 - `options` (object): Sync options
   - `force` (boolean): Drop and recreate all tables (default: false)
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Warning:** Never use in production! Use database migrations instead.
 
@@ -328,7 +328,7 @@ const users = await Users.where({ active: true }).cache(0).find();
 
 Executes the query and returns an array of records. Terminal method.
 
-**Returns:** Promise<Record[]>
+**Returns:** Promise`Promise<Record[]>`lt;Record[]`Promise<Record[]>`gt;
 
 **Example:**
 ```js
@@ -359,7 +359,7 @@ if (!user) {
 
 Returns the count of records matching the query. Terminal method.
 
-**Returns:** Promise<number>
+**Returns:** Promise`Promise<number>`lt;number`Promise<number>`gt;
 
 **Example:**
 ```js
@@ -376,7 +376,7 @@ Creates a new record in the database.
 **Parameters:**
 - `data` (object): Field values for the new record
 
-**Returns:** Promise<Record>
+**Returns:** Promise`Promise<Record>`lt;Record`Promise<Record>`gt;
 
 **Example:**
 ```js
@@ -429,7 +429,7 @@ Updates record fields and immediately flushes changes to the database.
 **Parameters:**
 - `data` (object): Key/value pairs to update
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
@@ -453,7 +453,7 @@ user.email = 'newemail@example.com';
 
 Deletes the record from the database.
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
@@ -473,7 +473,7 @@ Methods available on relation collections (one-to-many and many-to-many).
 
 Loads the relation collection from the database.
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
@@ -496,7 +496,7 @@ Filters the relation query before loading.
 **Parameters:**
 - `criteria` (object): Filter criteria
 
-**Returns:** Promise<Record[]>
+**Returns:** Promise`Promise<Record[]>`lt;Record[]`Promise<Record[]>`gt;
 
 **Example:**
 ```js
@@ -515,7 +515,7 @@ Adds a relation (many-to-many or one-to-many).
 **Parameters:**
 - `id` (number or Record): Related record ID or record instance
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
@@ -535,7 +535,7 @@ Removes a relation (many-to-many or one-to-many).
 **Parameters:**
 - `id` (number or Record): Related record ID or record instance
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
@@ -554,7 +554,7 @@ Replaces all relations with the specified IDs.
 **Parameters:**
 - `ids` (number[]): Array of related record IDs
 
-**Returns:** Promise<void>
+**Returns:** Promise`Promise<void>`lt;void`Promise<void>`gt;
 
 **Example:**
 ```js
