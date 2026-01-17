@@ -206,18 +206,159 @@ static fields = {
 
 ## 8) Scopes
 
-Sequelize scopes can be translated into helper statics on the model:
+Sequelize scopes provide reusable query patterns. NormalJS now supports scopes natively with a similar API.
+
+### Sequelize Scopes
+
+```js
+User.addScope('active', {
+  where: { active: true }
+});
+
+User.addScope('recent', {
+  order: [['createdAt', 'DESC']],
+  limit: 10
+});
+
+// Usage
+User.scope('active').findAll();
+User.scope('active', 'recent').findAll();
+```
+
+### NormalJS Scopes
 
 ```js
 class Users {
-  static active() {
-    return this.where({ active: true });
-  }
-  static byDomain(domain) {
-    return this.where({ email: { like: `%@${domain}` } });
-  }
+  static _name = 'Users';
+  static fields = {
+    id: 'primary',
+    email: 'string',
+    active: { type: 'boolean', default: true },
+    created_at: { type: 'datetime', default: () => new Date() },
+  };
+
+  // Define scopes
+  static scopes = {
+    active: {
+      where: { active: true },
+    },
+    recent: {
+      order: [['created_at', 'DESC']],
+      limit: 10,
+    },
+  };
 }
+
+// Usage
+await repo.Users.scope('active');
+await repo.Users.scope('active', 'recent');
 ```
+
+### Parameterized Scopes
+
+Sequelize:
+
+```js
+User.addScope('recentDays', (days) => ({
+  where: {
+    createdAt: { [Op.gte]: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }
+  }
+}));
+
+User.scope({ method: ['recentDays', 7] }).findAll();
+```
+
+NormalJS:
+
+```js
+class Users {
+  static scopes = {
+    recentDays: (qb, days = 7) => {
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      return {
+        where: { created_at: { gte: cutoff } },
+      };
+    },
+  };
+}
+
+// Usage
+await repo.Users.scope({ recentDays: [7] });
+```
+
+### Default Scopes
+
+Sequelize:
+
+```js
+const User = sequelize.define('User', { /* ... */ }, {
+  defaultScope: {
+    where: { active: true }
+  },
+  scopes: {
+    all: {}  // Remove default scope
+  }
+});
+
+User.findAll();  // Applies defaultScope
+User.scope('all').findAll();  // No default scope
+```
+
+NormalJS:
+
+```js
+class Users {
+  static _name = 'Users';
+  static fields = { /* ... */ };
+
+  static defaultScope = {
+    where: { active: true },
+  };
+
+  static scopes = {
+    inactive: {
+      where: { active: false },
+    },
+  };
+}
+
+// Usage
+await repo.Users.query();  // Applies defaultScope
+await repo.Users.unscoped();  // Bypass defaultScope
+await repo.Users.scope('inactive');  // Merges with defaultScope
+```
+
+### Scope Features Comparison
+
+| Feature | Sequelize | NormalJS |
+|---------|-----------|----------|
+| Basic scopes | ✅ | ✅ |
+| Parameterized scopes | ✅ | ✅ |
+| Default scope | ✅ | ✅ |
+| Multiple scopes | ✅ | ✅ |
+| Scope merging | ✅ | ✅ (AND for where) |
+| Include in scopes | ✅ | ✅ (basic support) |
+| Cache in scopes | ❌ | ✅ |
+
+### Scope with Caching (NormalJS Exclusive)
+
+NormalJS scopes can include caching configuration:
+
+```js
+class Users {
+  static scopes = {
+    popular: {
+      where: { followers: { gte: 1000 } },
+      cache: 300,  // Cache for 5 minutes
+    },
+  };
+}
+
+// Cache is applied automatically
+const popularUsers = await repo.Users.scope('popular');
+```
+
+For comprehensive scope documentation, see [docs/scopes.md](./scopes.md).
 
 ## 9) Migrations and schema sync
 

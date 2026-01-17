@@ -67,8 +67,48 @@ class Posts {
 - `Model.where(...)` is a shorthand for `Model.query().where(...)`.
 - `await Model.findById(id)` resolves an active record by id (uses in-memory identity map and cache when enabled).
 - `await Model.firstWhere(cond)` returns the first matching record.
+- **NEW**: `Model.scope(...)` applies predefined query scopes. See [Scopes](./scopes.md) for details.
+- **NEW**: `Model.unscoped()` bypasses the default scope if defined.
 
 Results are wrapped into active record instances. With cache enabled, read queries initially select only `id` for performance; accessing other fields triggers batched fetching behind the scenes.
+
+## Scopes
+
+Scopes provide a way to define reusable, composable query filters at the model level:
+
+```js
+class Users {
+  static _name = 'Users';
+  static fields = {
+    id: 'primary',
+    email: { type: 'string', unique: true },
+    active: { type: 'boolean', default: true },
+    verified: { type: 'boolean', default: false },
+  };
+
+  // Define reusable scopes
+  static scopes = {
+    active: {
+      where: { active: true },
+    },
+    verified: {
+      where: { verified: true },
+    },
+  };
+
+  // Default scope applied to all queries
+  static defaultScope = {
+    where: { active: true },
+  };
+}
+
+// Usage
+const activeUsers = await repo.Users.scope('active');
+const verifiedActive = await repo.Users.scope('active', 'verified');
+const allUsers = await repo.Users.unscoped(); // Bypass defaultScope
+```
+
+For a comprehensive guide on scopes, including parameterized scopes, caching, and eager loading, see [docs/scopes.md](./scopes.md).
 
 ## Creating and flushing
 
