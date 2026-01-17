@@ -357,7 +357,7 @@ const lead = await Leads.create({
 await lead.addActivity({
   subject: 'Follow up call',
   description: 'Call to discuss pricing',
-  due_date: new Date('2024-12-31'),
+  due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
   user_id: 1
 });
 
