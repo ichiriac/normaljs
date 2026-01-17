@@ -153,46 +153,11 @@ class SoftDeletable {
   async unlink() {
     if (this.deleted_at) {
       // Already soft-deleted, perform hard delete
-      return await this.forceUnlink();
+      return await super.unlink();
     }
     
     // Soft delete: just set deleted_at
     await this.write({ deleted_at: new Date() });
-    return this;
-  }
-  
-  // Method for hard delete
-  async forceUnlink() {
-    // Call parent unlink by accessing Record's original unlink
-    // We need to call the original implementation
-    const model = this._model;
-    if (!model) return this;
-    
-    this._model = null;
-    await this.pre_unlink();
-    await this.pre_validate();
-    
-    const pre_unlink = [];
-    for (const field of Object.values(model.fields)) {
-      pre_unlink.push(field.pre_unlink(this));
-    }
-    await Promise.all(pre_unlink);
-    
-    // Delete from database
-    await model.query().where({ id: this.id }).delete();
-    
-    if (this._parent) {
-      await this._parent.unlink();
-    }
-    
-    // Run post hooks
-    await this.post_unlink();
-    const post_unlink = [];
-    for (const field of Object.values(model.fields)) {
-      post_unlink.push(field.post_unlink(this));
-    }
-    await Promise.all(post_unlink);
-    
     return this;
   }
   
